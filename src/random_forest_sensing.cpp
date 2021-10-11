@@ -40,6 +40,7 @@ int _obs_num;
 double _x_size, _y_size, _z_size;
 double _x_l, _x_h, _y_l, _y_h, _w_l, _w_h, _h_l, _h_h;
 double _z_limit, _sensing_range, _resolution, _sense_rate, _init_x, _init_y;
+std::string _frame_id;
 
 bool _map_ok = false;
 bool _has_odom = false;
@@ -190,7 +191,7 @@ int i = 0;
 void pubSensedPoints() {
   // if (i < 10) {
   pcl::toROSMsg(cloudMap, globalMap_pcd);
-  globalMap_pcd.header.frame_id = "world";
+  globalMap_pcd.header.frame_id = _frame_id;
   _all_map_pub.publish(globalMap_pcd);
   // }
 
@@ -227,7 +228,7 @@ void pubSensedPoints() {
   localMap.is_dense = true;
 
   pcl::toROSMsg(localMap, localMap_pcd);
-  localMap_pcd.header.frame_id = "world";
+  localMap_pcd.header.frame_id = _frame_id;
   _local_map_pub.publish(localMap_pcd);
 }
 
@@ -260,7 +261,7 @@ void clickCallback(const geometry_msgs::PoseStamped& msg) {
   clicked_cloud_.is_dense = true;
 
   pcl::toROSMsg(clicked_cloud_, localMap_pcd);
-  localMap_pcd.header.frame_id = "world";
+  localMap_pcd.header.frame_id = _frame_id;
   click_map_pub_.publish(localMap_pcd);
 
   cloudMap.width = cloudMap.points.size();
@@ -281,6 +282,7 @@ int main(int argc, char** argv) {
       n.advertise<sensor_msgs::PointCloud2>("/pcl_render_node/local_map", 1);
   // ros::Subscriber click_sub = n.subscribe("/goal", 10, clickCallback);
 
+
   n.param("init_state_x", _init_x, 0.0);
   n.param("init_state_y", _init_y, 0.0);
 
@@ -290,6 +292,8 @@ int main(int argc, char** argv) {
   n.param("map/obs_num", _obs_num, 30);
   n.param("map/resolution", _resolution, 0.1);
   n.param("map/circle_num", circle_num_, 30);
+  n.param("map/frame_id", _frame_id, string("map"));
+
 
   n.param("ObstacleShape/lower_rad", _w_l, 0.3);
   n.param("ObstacleShape/upper_rad", _w_h, 0.8);
