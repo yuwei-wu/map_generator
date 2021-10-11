@@ -1,6 +1,6 @@
-# map_generator
-Independent ros package to generate random map
+# plan_env
 
+Code from:
+https://github.com/HKUST-Aerial-Robotics/Fast-Planner
 
-Code revised from fast planner: https://github.com/HKUST-Aerial-Robotics/Fast-Planner
-
+test on Ubuntu 20.04 (ROS Noetic)
