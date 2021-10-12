@@ -9,7 +9,7 @@
   <arg name="initial_position/z" default="0.0"/> 
 
   <arg name="c_num" default="10.0"/>
-  <arg name="p_num" default="150.0"/>
+  <arg name="p_num" default="200.0"/>
   <arg name="odom_topic" default="/quadrotor/odom"/>
 
 
@@ -30,6 +30,7 @@
     <param name="ObstacleShape/upper_rad" value="0.7"/>
     <param name="ObstacleShape/lower_hei" value="0.0"/>
     <param name="ObstacleShape/upper_hei" value="3.0"/>        
+    <param name="ObstacleShape/set_cylinder" value="true"/>     
 
     <param name="map/circle_num" value="$(arg c_num)"/>        
     <param name="ObstacleShape/radius_l" value="0.7"/>        

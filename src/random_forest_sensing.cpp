@@ -44,6 +44,7 @@ std::string _frame_id;
 
 bool _map_ok = false;
 bool _has_odom = false;
+bool _set_cylinder = false;
 
 int circle_num_;
 double radius_l_, radius_h_, z_l_, z_h_;
@@ -93,9 +94,13 @@ void RandomMapGenerate() {
     y = floor(y / _resolution) * _resolution + _resolution / 2.0;
 
     int widNum = ceil(w / _resolution);
-
+    
     for (int r = -widNum / 2.0; r < widNum / 2.0; r++)
       for (int s = -widNum / 2.0; s < widNum / 2.0; s++) {
+        //@yuwei: to make it as cylinders
+        if ( _set_cylinder && (r*r + s*s) > (widNum*widNum / 4.0)  ){
+          continue;
+        }
         h = rand_h(eng);
         int heiNum = ceil(h / _resolution);
         for (int t = -30; t < heiNum; t++) {
@@ -105,6 +110,8 @@ void RandomMapGenerate() {
           cloudMap.points.push_back(pt_random);
         }
       }
+
+
   }
 
   // generate circle obs
@@ -299,6 +306,8 @@ int main(int argc, char** argv) {
   n.param("ObstacleShape/upper_rad", _w_h, 0.8);
   n.param("ObstacleShape/lower_hei", _h_l, 3.0);
   n.param("ObstacleShape/upper_hei", _h_h, 7.0);
+  n.param("ObstacleShape/set_cylinder", _set_cylinder, false);
+
 
   n.param("ObstacleShape/radius_l", radius_l_, 7.0);
   n.param("ObstacleShape/radius_h", radius_h_, 7.0);
