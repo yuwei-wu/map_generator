@@ -32,7 +32,6 @@ uniform_real_distribution<double> rand_h;
 ros::Publisher _local_map_pub;
 ros::Publisher _all_map_pub;
 ros::Publisher click_map_pub_;
-ros::Subscriber _odom_sub;
 
 vector<double> _state;
 
@@ -179,20 +178,20 @@ void RandomMapGenerate() {
   _map_ok = true;
 }
 
-void rcvOdometryCallbck(const nav_msgs::Odometry odom) {
-  if (odom.child_frame_id == "X" || odom.child_frame_id == "O") return;
-  _has_odom = true;
+// void rcvOdometryCallbck(const nav_msgs::Odometry odom) {
+//   if (odom.child_frame_id == "X" || odom.child_frame_id == "O") return;
+//   _has_odom = true;
 
-  _state = {odom.pose.pose.position.x,
-            odom.pose.pose.position.y,
-            odom.pose.pose.position.z,
-            odom.twist.twist.linear.x,
-            odom.twist.twist.linear.y,
-            odom.twist.twist.linear.z,
-            0.0,
-            0.0,
-            0.0};
-}
+//   _state = {odom.pose.pose.position.x,
+//             odom.pose.pose.position.y,
+//             odom.pose.pose.position.z,
+//             odom.twist.twist.linear.x,
+//             odom.twist.twist.linear.y,
+//             odom.twist.twist.linear.z,
+//             0.0,
+//             0.0,
+//             0.0};
+// }
 
 int i = 0;
 void pubSensedPoints() {
@@ -208,8 +207,8 @@ void pubSensedPoints() {
   if (!_map_ok || !_has_odom) return;
 
   pcl::PointCloud<pcl::PointXYZ> localMap;
-
-  pcl::PointXYZ searchPoint(_state[0], _state[1], _state[2]);
+  //@yuwei
+  pcl::PointXYZ searchPoint(_init_x, _init_y, 0.0);
   pointIdxRadiusSearch.clear();
   pointRadiusSquaredDistance.clear();
 
@@ -283,7 +282,7 @@ int main(int argc, char** argv) {
   _local_map_pub = n.advertise<sensor_msgs::PointCloud2>("/map_generator/local_cloud", 1);
   _all_map_pub = n.advertise<sensor_msgs::PointCloud2>("/map_generator/global_cloud", 1);
 
-  _odom_sub = n.subscribe("odometry", 50, rcvOdometryCallbck);
+  //_odom_sub = n.subscribe("odometry", 50, rcvOdometryCallbck);
 
   click_map_pub_ =
       n.advertise<sensor_msgs::PointCloud2>("/pcl_render_node/local_map", 1);
