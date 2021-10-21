@@ -5,13 +5,18 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <iostream>
 
+// for cylinders
 #include <geometry_msgs/PoseStamped.h>
+#include <visualization_msgs/MarkerArray.h>
+
+#include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/Vector3.h>
 #include <math.h>
 #include <nav_msgs/Odometry.h>
 #include <ros/console.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
+
 #include <Eigen/Eigen>
 #include <random>
 
@@ -29,8 +34,8 @@ uniform_real_distribution<double> rand_y;
 uniform_real_distribution<double> rand_w;
 uniform_real_distribution<double> rand_h;
 
-ros::Publisher _local_map_pub;
-ros::Publisher _all_map_pub;
+// ros::Publisher _local_map_pub;
+ros::Publisher _all_map_cloud_pub, _all_map_cylinder_pub, _all_map_cylinder_pub_vis;
 ros::Publisher click_map_pub_;
 
 vector<double> _state;
@@ -56,11 +61,16 @@ uniform_real_distribution<double> rand_z_;
 sensor_msgs::PointCloud2 globalMap_pcd;
 pcl::PointCloud<pcl::PointXYZ> cloudMap;
 
-sensor_msgs::PointCloud2 localMap_pcd;
-pcl::PointCloud<pcl::PointXYZ> clicked_cloud_;
+geometry_msgs::PoseArray cylinders;
+visualization_msgs::MarkerArray cylinders_vis;
+visualization_msgs::Marker cylinder_mk;
+
 
 void RandomMapGenerate() {
   pcl::PointXYZ pt_random;
+  geometry_msgs::Pose pt;
+  pt.orientation.w = 1.0;
+
 
   rand_x = uniform_real_distribution<double>(_x_l, _x_h);
   rand_y = uniform_real_distribution<double>(_y_l, _y_h);
@@ -78,6 +88,8 @@ void RandomMapGenerate() {
     x = rand_x(eng);
     y = rand_y(eng);
     w = rand_w(eng);
+    h = rand_h(eng);
+    int heiNum = ceil(h / _resolution);
 
     if (sqrt(pow(x - _init_x, 2) + pow(y - _init_y, 2)) < 2.0) {
       i--;
@@ -92,6 +104,18 @@ void RandomMapGenerate() {
     x = floor(x / _resolution) * _resolution + _resolution / 2.0;
     y = floor(y / _resolution) * _resolution + _resolution / 2.0;
 
+    pt.position.x= x;
+    pt.position.y = y;
+    pt.position.z = 0.5*h;
+    cylinder_mk.pose = pt;
+    cylinder_mk.scale.x = cylinder_mk.scale.y = w;
+    cylinder_mk.scale.z = h;
+
+
+    cylinders_vis.markers.push_back(cylinder_mk);
+    cylinders.poses.push_back(pt);
+    cylinder_mk.id += 1;
+
     int widNum = ceil(w / _resolution);
     
     for (int r = -widNum / 2.0; r < widNum / 2.0; r++)
@@ -100,20 +124,18 @@ void RandomMapGenerate() {
         if ( _set_cylinder && (r*r + s*s) > (widNum*widNum / 4.0)  ){
           continue;
         }
-        h = rand_h(eng);
-        int heiNum = ceil(h / _resolution);
-        for (int t = -30; t < heiNum; t++) {
+        for (int t = -2.0; t < heiNum; t++) {
           pt_random.x = x + (r + 0.5) * _resolution + 1e-2;
           pt_random.y = y + (s + 0.5) * _resolution + 1e-2;
           pt_random.z = (t + 0.5) * _resolution + 1e-2;
           cloudMap.points.push_back(pt_random);
         }
       }
-
+    
 
   }
 
-  // generate circle obs
+  // generate circle obs // even if we generate, we will not include them into our shared information
   for (int i = 0; i < circle_num_; ++i) {
     double x, y, z;
     x = rand_x(eng);
@@ -178,115 +200,32 @@ void RandomMapGenerate() {
   _map_ok = true;
 }
 
-// void rcvOdometryCallbck(const nav_msgs::Odometry odom) {
-//   if (odom.child_frame_id == "X" || odom.child_frame_id == "O") return;
-//   _has_odom = true;
-
-//   _state = {odom.pose.pose.position.x,
-//             odom.pose.pose.position.y,
-//             odom.pose.pose.position.z,
-//             odom.twist.twist.linear.x,
-//             odom.twist.twist.linear.y,
-//             odom.twist.twist.linear.z,
-//             0.0,
-//             0.0,
-//             0.0};
-// }
-
 int i = 0;
 void pubSensedPoints() {
   // if (i < 10) {
   pcl::toROSMsg(cloudMap, globalMap_pcd);
   globalMap_pcd.header.frame_id = _frame_id;
-  _all_map_pub.publish(globalMap_pcd);
+  _all_map_cloud_pub.publish(globalMap_pcd);
   // }
 
-  return;
+  _all_map_cylinder_pub.publish(cylinders);
+  _all_map_cylinder_pub_vis.publish(cylinders_vis);
 
-  /* ---------- only publish points around current position ---------- */
-  if (!_map_ok || !_has_odom) return;
 
-  pcl::PointCloud<pcl::PointXYZ> localMap;
-  //@yuwei
-  pcl::PointXYZ searchPoint(_init_x, _init_y, 0.0);
-  pointIdxRadiusSearch.clear();
-  pointRadiusSquaredDistance.clear();
-
-  pcl::PointXYZ pt;
-
-  if (isnan(searchPoint.x) || isnan(searchPoint.y) || isnan(searchPoint.z))
-    return;
-
-  if (kdtreeLocalMap.radiusSearch(searchPoint, _sensing_range,
-                                  pointIdxRadiusSearch,
-                                  pointRadiusSquaredDistance) > 0) {
-    for (size_t i = 0; i < pointIdxRadiusSearch.size(); ++i) {
-      pt = cloudMap.points[pointIdxRadiusSearch[i]];
-      localMap.points.push_back(pt);
-    }
-  } else {
-    ROS_ERROR("[Map server] No obstacles .");
-    return;
-  }
-
-  localMap.width = localMap.points.size();
-  localMap.height = 1;
-  localMap.is_dense = true;
-
-  pcl::toROSMsg(localMap, localMap_pcd);
-  localMap_pcd.header.frame_id = _frame_id;
-  _local_map_pub.publish(localMap_pcd);
-}
-
-void clickCallback(const geometry_msgs::PoseStamped& msg) {
-  double x = msg.pose.position.x;
-  double y = msg.pose.position.y;
-  double w = rand_w(eng);
-  double h;
-  pcl::PointXYZ pt_random;
-
-  x = floor(x / _resolution) * _resolution + _resolution / 2.0;
-  y = floor(y / _resolution) * _resolution + _resolution / 2.0;
-
-  int widNum = ceil(w / _resolution);
-
-  for (int r = -widNum / 2.0; r < widNum / 2.0; r++)
-    for (int s = -widNum / 2.0; s < widNum / 2.0; s++) {
-      h = rand_h(eng);
-      int heiNum = ceil(h / _resolution);
-      for (int t = -1; t < heiNum; t++) {
-        pt_random.x = x + (r + 0.5) * _resolution + 1e-2;
-        pt_random.y = y + (s + 0.5) * _resolution + 1e-2;
-        pt_random.z = (t + 0.5) * _resolution + 1e-2;
-        clicked_cloud_.points.push_back(pt_random);
-        cloudMap.points.push_back(pt_random);
-      }
-    }
-  clicked_cloud_.width = clicked_cloud_.points.size();
-  clicked_cloud_.height = 1;
-  clicked_cloud_.is_dense = true;
-
-  pcl::toROSMsg(clicked_cloud_, localMap_pcd);
-  localMap_pcd.header.frame_id = _frame_id;
-  click_map_pub_.publish(localMap_pcd);
-
-  cloudMap.width = cloudMap.points.size();
 
   return;
 }
+
+
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "random_map_sensing");
   ros::NodeHandle n("~");
 
-  _local_map_pub = n.advertise<sensor_msgs::PointCloud2>("local_cloud", 1);
-  _all_map_pub = n.advertise<sensor_msgs::PointCloud2>("global_cloud", 1);
-
-  //_odom_sub = n.subscribe("odometry", 50, rcvOdometryCallbck);
-
-  // click_map_pub_ =
-  //     n.advertise<sensor_msgs::PointCloud2>("pcl_render_node/local_map", 1);
-  // ros::Subscriber click_sub = n.subscribe("/goal", 10, clickCallback);
+  //_local_map_pub = n.advertise<sensor_msgs::PointCloud2>("local_cloud", 1);
+  _all_map_cloud_pub = n.advertise<sensor_msgs::PointCloud2>("global_cloud", 1);
+  _all_map_cylinder_pub = n.advertise<geometry_msgs::PoseArray>("global_cyliners", 1);
+  _all_map_cylinder_pub_vis = n.advertise<visualization_msgs::MarkerArray>("global_cyliners_vis", 1);
 
 
   n.param("init_state_x", _init_x, 0.0);
@@ -295,6 +234,12 @@ int main(int argc, char** argv) {
   n.param("map/x_size", _x_size, 50.0);
   n.param("map/y_size", _y_size, 50.0);
   n.param("map/z_size", _z_size, 5.0);
+
+  // clearance for multi robots. 
+  _x_size -= 2.0;
+  _y_size -= 2.0;
+
+
   n.param("map/obs_num", _obs_num, 30);
   n.param("map/resolution", _resolution, 0.1);
   n.param("map/circle_num", circle_num_, 30);
@@ -325,6 +270,18 @@ int main(int argc, char** argv) {
 
   _obs_num = min(_obs_num, (int)_x_size * 10);
   _z_limit = _z_size;
+
+  cylinder_mk.header.frame_id = _frame_id;
+  cylinder_mk.header.stamp = ros::Time::now();
+  cylinder_mk.type = visualization_msgs::Marker::CYLINDER;
+  cylinder_mk.action  = visualization_msgs::Marker::ADD;
+  cylinder_mk.id = 0;
+  cylinder_mk.color.r = 1.0;
+  cylinder_mk.color.g = 0.8;
+  cylinder_mk.color.b = 0.9;
+  cylinder_mk.color.a = 0.8;
+    
+
 
   ros::Duration(0.5).sleep();
 
