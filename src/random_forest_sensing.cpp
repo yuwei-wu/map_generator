@@ -6,7 +6,6 @@
 #include <iostream>
 
 // for cylinders
-#include <geometry_msgs/PoseStamped.h>
 #include <visualization_msgs/MarkerArray.h>
 
 #include <geometry_msgs/PoseArray.h>
@@ -22,8 +21,6 @@
 
 using namespace std;
 
-// pcl::search::KdTree<pcl::PointXYZ> kdtreeLocalMap;
-pcl::KdTreeFLANN<pcl::PointXYZ> kdtreeLocalMap;
 vector<int> pointIdxRadiusSearch;
 vector<float> pointRadiusSquaredDistance;
 
@@ -59,9 +56,13 @@ uniform_real_distribution<double> rand_theta_;
 uniform_real_distribution<double> rand_z_;
 
 sensor_msgs::PointCloud2 globalMap_pcd;
-pcl::PointCloud<pcl::PointXYZ> cloudMap;
+sensor_msgs::PointCloud2 globalCylinders_pcd;
 
-geometry_msgs::PoseArray cylinders;
+
+pcl::PointCloud<pcl::PointXYZ> cloudMap;
+pcl::PointCloud<pcl::PointXYZ> cylinders;
+
+
 visualization_msgs::MarkerArray cylinders_vis;
 visualization_msgs::Marker cylinder_mk;
 
@@ -108,13 +109,15 @@ void RandomMapGenerate() {
     pt.position.y = y;
     pt.position.z = 0.5*h;
     cylinder_mk.pose = pt;
-    cylinder_mk.scale.x = cylinder_mk.scale.y = w;
+    cylinder_mk.scale.x = cylinder_mk.scale.y = w; // less then 1
     cylinder_mk.scale.z = h;
-
-
     cylinders_vis.markers.push_back(cylinder_mk);
-    cylinders.poses.push_back(pt);
     cylinder_mk.id += 1;
+
+    pt_random.x = x;
+    pt_random.y = y;
+    pt_random.z = w; // store the width of the cylinders
+    cylinders.points.push_back(pt_random);
 
     int widNum = ceil(w / _resolution);
     
@@ -195,8 +198,6 @@ void RandomMapGenerate() {
 
   ROS_WARN("Finished generate random map ");
 
-  kdtreeLocalMap.setInputCloud(cloudMap.makeShared());
-
   _map_ok = true;
 }
 
@@ -207,11 +208,11 @@ void pubSensedPoints() {
   globalMap_pcd.header.frame_id = _frame_id;
   _all_map_cloud_pub.publish(globalMap_pcd);
   // }
+  pcl::toROSMsg(cloudMap, globalCylinders_pcd);
+  globalCylinders_pcd.header.frame_id = _frame_id;
+  _all_map_cylinder_pub.publish(globalCylinders_pcd);
 
-  _all_map_cylinder_pub.publish(cylinders);
   _all_map_cylinder_pub_vis.publish(cylinders_vis);
-
-
 
   return;
 }
@@ -224,8 +225,8 @@ int main(int argc, char** argv) {
 
   //_local_map_pub = n.advertise<sensor_msgs::PointCloud2>("local_cloud", 1);
   _all_map_cloud_pub = n.advertise<sensor_msgs::PointCloud2>("global_cloud", 1);
-  _all_map_cylinder_pub = n.advertise<geometry_msgs::PoseArray>("global_cyliners", 1);
-  _all_map_cylinder_pub_vis = n.advertise<visualization_msgs::MarkerArray>("global_cyliners_vis", 1);
+  _all_map_cylinder_pub = n.advertise<sensor_msgs::PointCloud2>("global_cylinders", 1);
+  _all_map_cylinder_pub_vis = n.advertise<visualization_msgs::MarkerArray>("global_cylinders_vis", 1);
 
 
   n.param("init_state_x", _init_x, 0.0);
@@ -279,7 +280,7 @@ int main(int argc, char** argv) {
   cylinder_mk.color.r = 1.0;
   cylinder_mk.color.g = 0.8;
   cylinder_mk.color.b = 0.9;
-  cylinder_mk.color.a = 0.8;
+  cylinder_mk.color.a = 0.5;
     
 
 
