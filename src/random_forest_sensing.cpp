@@ -208,7 +208,7 @@ void pubSensedPoints() {
   globalMap_pcd.header.frame_id = _frame_id;
   _all_map_cloud_pub.publish(globalMap_pcd);
   // }
-  pcl::toROSMsg(cloudMap, globalCylinders_pcd);
+  pcl::toROSMsg(cylinders, globalCylinders_pcd);
   globalCylinders_pcd.header.frame_id = _frame_id;
   _all_map_cylinder_pub.publish(globalCylinders_pcd);
 
