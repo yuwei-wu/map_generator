@@ -208,7 +208,7 @@ void pubSensedPoints() {
   globalMap_pcd.header.frame_id = _frame_id;
   _all_map_cloud_pub.publish(globalMap_pcd);
   // }
-  pcl::toROSMsg(cloudMap, globalCylinders_pcd);
+  pcl::toROSMsg(cylinders, globalCylinders_pcd);
   globalCylinders_pcd.header.frame_id = _frame_id;
   _all_map_cylinder_pub.publish(globalCylinders_pcd);
 
@@ -263,6 +263,7 @@ int main(int argc, char** argv) {
   n.param("sensing/radius", _sensing_range, 10.0);
   n.param("sensing/radius", _sense_rate, 10.0);
 
+
   _x_l = -_x_size / 2.0;
   _x_h = +_x_size / 2.0;
 
@@ -277,10 +278,10 @@ int main(int argc, char** argv) {
   cylinder_mk.type = visualization_msgs::Marker::CYLINDER;
   cylinder_mk.action  = visualization_msgs::Marker::ADD;
   cylinder_mk.id = 0;
-  cylinder_mk.color.r = 1.0;
-  cylinder_mk.color.g = 0.8;
-  cylinder_mk.color.b = 0.9;
-  cylinder_mk.color.a = 0.5;
+  cylinder_mk.color.r = 0.5;
+  cylinder_mk.color.g = 0.5;
+  cylinder_mk.color.b = 0.5;
+  cylinder_mk.color.a = 0.6;
     
 
 
