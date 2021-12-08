@@ -14,7 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   pcl_conversions
 )
-find_package(PCL REQUIRED)
+find_package(PCL 1.7 REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 catkin_package()
@@ -30,3 +30,9 @@ add_executable (random_forest src/random_forest_sensing.cpp )
 target_link_libraries(random_forest
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES})
+  
+  
+  add_executable (click_map src/click_map.cpp )
+target_link_libraries(click_map
+  ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES}) 
