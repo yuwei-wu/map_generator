@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.10)
 project(map_generator)
 
 set(CMAKE_BUILD_TYPE "Release")
@@ -36,3 +36,13 @@ target_link_libraries(random_forest
 target_link_libraries(click_map
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}) 
+
+install(TARGETS random_forest click_map
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(DIRECTORY launch/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+  PATTERN ".svn" EXCLUDE)
