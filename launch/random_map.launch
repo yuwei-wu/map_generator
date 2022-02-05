@@ -25,7 +25,7 @@
     <param name="ObstacleShape/upper_rad" value="1.0"/>
     <param name="ObstacleShape/lower_hei" value="5.0"/>
     <param name="ObstacleShape/upper_hei" value="5.0"/>        
-    <param name="ObstacleShape/set_cylinder" value="true"/>     
+    <param name="ObstacleShape/set_semantics" value="true"/>     
 
     <param name="map/circle_num" value="$(arg c_num)"/>        
     <param name="ObstacleShape/radius_l" value="0.7"/>        

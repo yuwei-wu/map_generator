@@ -5,8 +5,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <iostream>
 
-// for cylinders
-#include <visualization_msgs/MarkerArray.h>
+
 
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/Vector3.h>
@@ -18,6 +17,13 @@
 
 #include <Eigen/Eigen>
 #include <random>
+
+// for semantic map visualization
+#include <semantics_msgs/SemanticArray.h>
+#include <semantics_msgs/Circle.h>
+
+#include <visualization_msgs/MarkerArray.h>
+
 
 using namespace std;
 
@@ -31,9 +37,8 @@ uniform_real_distribution<double> rand_y;
 uniform_real_distribution<double> rand_w;
 uniform_real_distribution<double> rand_h;
 
-// ros::Publisher _local_map_pub;
-ros::Publisher _all_map_cloud_pub, _all_map_cylinder_pub, _all_map_cylinder_pub_vis;
-ros::Publisher click_map_pub_;
+
+ros::Publisher _all_map_cloud_pub, _all_map_semantics_pub, _all_map_semantics_pub_vis;
 
 vector<double> _state;
 
@@ -45,7 +50,7 @@ std::string _frame_id;
 
 bool _map_ok = false;
 bool _has_odom = false;
-bool _set_cylinder = false;
+bool _set_semantics = false;
 
 int circle_num_;
 double radius_l_, radius_h_, z_l_, z_h_;
@@ -56,15 +61,12 @@ uniform_real_distribution<double> rand_theta_;
 uniform_real_distribution<double> rand_z_;
 
 sensor_msgs::PointCloud2 globalMap_pcd;
-sensor_msgs::PointCloud2 globalCylinders_pcd;
-
 
 pcl::PointCloud<pcl::PointXYZ> cloudMap;
-pcl::PointCloud<pcl::PointXYZ> cylinders;
+semantics_msgs::SemanticArray global_semantics_msg;
 
-
-visualization_msgs::MarkerArray cylinders_vis;
-visualization_msgs::Marker cylinder_mk;
+visualization_msgs::MarkerArray semantics_vis;
+visualization_msgs::Marker semantics_mk;
 
 
 void RandomMapGenerate() {
@@ -83,6 +85,8 @@ void RandomMapGenerate() {
   rand_theta_ = uniform_real_distribution<double>(-theta_, theta_);
   rand_z_ = uniform_real_distribution<double>(z_l_, z_h_);
 
+
+  // only enable the clyinders in the forest case
   // generate polar obs
   for (int i = 0; i < _obs_num; i++) {
     double x, y, w, h;
@@ -108,29 +112,36 @@ void RandomMapGenerate() {
     pt.position.x= x;
     pt.position.y = y;
     pt.position.z = 0.5*h;
-    cylinder_mk.pose = pt;
-    cylinder_mk.scale.x = cylinder_mk.scale.y = w; // less then 1
-    cylinder_mk.scale.z = h;
-    cylinders_vis.markers.push_back(cylinder_mk);
-    cylinder_mk.id += 1;
+    semantics_mk.pose = pt;
+    semantics_mk.scale.x = semantics_mk.scale.y = w; // less then 1
+    semantics_mk.scale.z = h;
+    semantics_vis.markers.push_back(semantics_mk);
+    semantics_mk.id += 1;
 
-    pt_random.x = x;
-    pt_random.y = y;
-    pt_random.z = w; // store the width of the cylinders
-    cylinders.points.push_back(pt_random);
 
-    int widNum = ceil(w / _resolution);
+    semantics_msgs::Circle tree_model;
+
+    tree_model.id = i;
+    tree_model.pos.x = x;
+    tree_model.pos.y = y;
+    tree_model.r = w;
+    
+    global_semantics_msg.circles.push_back(tree_model);
+
+    int widNum = ceil( w / _resolution) +1;
     
     for (int r = -widNum / 2.0; r < widNum / 2.0; r++)
       for (int s = -widNum / 2.0; s < widNum / 2.0; s++) {
-        //@yuwei: to make it as cylinders
-        if ( _set_cylinder && (r*r + s*s) > (widNum*widNum / 4.0)  ){
-          continue;
-        }
+
         for (int t = -2.0; t < heiNum; t++) {
           pt_random.x = x + (r + 0.5) * _resolution + 1e-2;
           pt_random.y = y + (s + 0.5) * _resolution + 1e-2;
           pt_random.z = (t + 0.5) * _resolution + 1e-2;
+
+          //@yuwei: to make it as semantics
+          if (  (pt_random.x - x)*(pt_random.x - x) + (pt_random.y - y)*(pt_random.y - y)   >  w*w/ 4.0  ){
+            continue;
+          }
           cloudMap.points.push_back(pt_random);
         }
       }
@@ -163,8 +174,7 @@ void RandomMapGenerate() {
 
     double theta = rand_theta_(eng);
     Eigen::Matrix3d rotate;
-    rotate << cos(theta), -sin(theta), 0.0, sin(theta), cos(theta), 0.0, 0, 0,
-        1;
+    rotate << cos(theta), -sin(theta), 0.0, sin(theta), cos(theta), 0.0, 0, 0, 1;
 
     double radius1 = rand_radius_(eng);
     double radius2 = rand_radius2_(eng);
@@ -208,25 +218,26 @@ void pubSensedPoints() {
   globalMap_pcd.header.frame_id = _frame_id;
   _all_map_cloud_pub.publish(globalMap_pcd);
   // }
-  pcl::toROSMsg(cylinders, globalCylinders_pcd);
-  globalCylinders_pcd.header.frame_id = _frame_id;
-  _all_map_cylinder_pub.publish(globalCylinders_pcd);
 
-  _all_map_cylinder_pub_vis.publish(cylinders_vis);
+  global_semantics_msg.mav_id = -1; // -1 for global, 0 + for the mav_id
+  global_semantics_msg.header.frame_id = _frame_id;
+  _all_map_semantics_pub.publish(global_semantics_msg);
+
+
+  _all_map_semantics_pub_vis.publish(semantics_vis);
 
   return;
 }
-
-
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "random_map_sensing");
   ros::NodeHandle n("~");
 
-  //_local_map_pub = n.advertise<sensor_msgs::PointCloud2>("local_cloud", 1);
   _all_map_cloud_pub = n.advertise<sensor_msgs::PointCloud2>("global_cloud", 1);
-  _all_map_cylinder_pub = n.advertise<sensor_msgs::PointCloud2>("global_cylinders", 1);
-  _all_map_cylinder_pub_vis = n.advertise<visualization_msgs::MarkerArray>("global_cylinders_vis", 1);
+
+  // semantics publishers
+  _all_map_semantics_pub = n.advertise<semantics_msgs::SemanticArray>("global_semantics", 1);
+  _all_map_semantics_pub_vis = n.advertise<visualization_msgs::MarkerArray>("global_semantics_vis", 1);
 
 
   n.param("init_state_x", _init_x, 0.0);
@@ -236,7 +247,7 @@ int main(int argc, char** argv) {
   n.param("map/y_size", _y_size, 50.0);
   n.param("map/z_size", _z_size, 5.0);
 
-  // clearance for multi robots. 
+  // clearance for multi robots.
   _x_size -= 2.0;
   _y_size -= 2.0;
 
@@ -251,7 +262,7 @@ int main(int argc, char** argv) {
   n.param("ObstacleShape/upper_rad", _w_h, 0.8);
   n.param("ObstacleShape/lower_hei", _h_l, 3.0);
   n.param("ObstacleShape/upper_hei", _h_h, 7.0);
-  n.param("ObstacleShape/set_cylinder", _set_cylinder, false);
+  n.param("ObstacleShape/set_semantics", _set_semantics, false);
 
 
   n.param("ObstacleShape/radius_l", radius_l_, 7.0);
@@ -263,7 +274,6 @@ int main(int argc, char** argv) {
   n.param("sensing/radius", _sensing_range, 10.0);
   n.param("sensing/radius", _sense_rate, 10.0);
 
-
   _x_l = -_x_size / 2.0;
   _x_h = +_x_size / 2.0;
 
@@ -273,17 +283,15 @@ int main(int argc, char** argv) {
   _obs_num = min(_obs_num, (int)_x_size * 10);
   _z_limit = _z_size;
 
-  cylinder_mk.header.frame_id = _frame_id;
-  cylinder_mk.header.stamp = ros::Time::now();
-  cylinder_mk.type = visualization_msgs::Marker::CYLINDER;
-  cylinder_mk.action  = visualization_msgs::Marker::ADD;
-  cylinder_mk.id = 0;
-  cylinder_mk.color.r = 0.5;
-  cylinder_mk.color.g = 0.5;
-  cylinder_mk.color.b = 0.5;
-  cylinder_mk.color.a = 0.6;
-    
-
+  semantics_mk.header.frame_id = _frame_id;
+  semantics_mk.header.stamp = ros::Time::now();
+  semantics_mk.type = visualization_msgs::Marker::CYLINDER;
+  semantics_mk.action  = visualization_msgs::Marker::ADD;
+  semantics_mk.id = 0;
+  semantics_mk.color.r = 0.5;
+  semantics_mk.color.g = 0.5;
+  semantics_mk.color.b = 0.5;
+  semantics_mk.color.a = 0.6;
 
   ros::Duration(0.5).sleep();
 
