@@ -138,7 +138,7 @@ void RandomMapGenerate() {
 
   }
 
-  // generate circle obs // even if we generate, we will not include them into our shared information
+  // generate circle obs
   for (int i = 0; i < circle_num_; ++i) {
     double x, y, z;
     x = rand_x(eng);

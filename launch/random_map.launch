@@ -5,7 +5,7 @@
   <arg name="map_size_y" default="30"/>
   <arg name="map_size_z" default="5"/>
 
-  <arg name="c_num" default="0.0"/>
+  <arg name="c_num" default="100.0"/>
   <arg name="p_num" default="150.0"/>
 
 
