@@ -26,5 +26,5 @@ Examples:
   <img src="docs/exp_gate2.png" width = "390" height = "390"/>
   <img src="docs/exp_cy2.png" width = "390" height = "390"/>
   <img src="docs/exp_all2.png" width = "390" height = "390"/>
-  <img src="docs/culttered.png" width = "390" height = "390"/>
+  <img src="docs/cluttered.png" width = "390" height = "390"/>
 </p>
