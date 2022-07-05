@@ -7,6 +7,7 @@ Panels:
         - /Global Options1
         - /Status1
         - /Grid1
+        - /Axes1
       Splitter Ratio: 0.5
     Tree Height: 1530
   - Class: rviz/Selection
@@ -53,11 +54,11 @@ Visualization Manager:
       Plane Cell Count: 20
       Reference Frame: <Fixed Frame>
       Value: true
-    - Alpha: 0.4000000059604645
+    - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 4.960000038146973
-        Min Value: -0.4426354765892029
+        Max Value: 4.999825954437256
+        Min Value: -0.03999999910593033
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -75,11 +76,20 @@ Visualization Manager:
       Selectable: true
       Size (Pixels): 3
       Size (m): 0.10000000149011612
-      Style: Flat Squares
-      Topic: /random_forest/global_cloud
+      Style: Boxes
+      Topic: /structure_map/global_cloud
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
+      Value: true
+    - Alpha: 1
+      Class: rviz/Axes
+      Enabled: true
+      Length: 2
+      Name: Axes
+      Radius: 0.10000000149011612
+      Reference Frame: <Fixed Frame>
+      Show Trail: false
       Value: true
   Enabled: true
   Global Options:
@@ -109,7 +119,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 39.42204284667969
+      Distance: 58.181556701660156
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -125,9 +135,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.1997966766357422
+      Pitch: 1.5697963237762451
       Target Frame: <Fixed Frame>
-      Yaw: 0.0204019732773304
+      Yaw: 3.1456100940704346
     Saved: ~
 Window Geometry:
   Displays:

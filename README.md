@@ -1,25 +1,33 @@
-# map_generator
-Independent ros package to generate random map. The code is revised from [fast planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner)
+# Parameterized Map
+
+This repo is under construction. For mini-project users, you can directly use it.
+
+### usage 1: structured map generation
+
+
+``
+roslaunch param_env structure_map.launch
+
+``
+
+You can adjust the apprximate ratio of each element (overlapping is also counting now)
+
+``
+    <param name="map/cylinder_ratio" value="0.10" type="double"/>
+    <param name="map/circle_ratio"   value="0.02" type="double"/>
+    <param name="map/gate_ratio"     value="0.02" type="double"/>
+    <param name="map/ellip_ratio"    value="0.02" type="double"/>
+    <param name="map/poly_ratio"     value="0.01" type="double"/>
+
+``
+
+
+Examples:
 
 
 
-### usage
+![](docs/exp_all2.png)
 
-1. generate a point cloud global map of boxes and circles. 
+![](docs/exp_cy2.png)
 
-
-![](docs/eg2.png)
-
-
-
-
-2. generate semantic map.
-
-you can also directly use the semantic information and create your own semantic map for planning. The example generates the semantic map of cylinders and publish both the cylinders informaton and point cloud.
-
-![](docs/eg1.png)
-
-
-
-
-
+![](docs/exp_gate2.png)
