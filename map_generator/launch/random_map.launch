@@ -1,0 +1,61 @@
+<launch>
+
+  <arg name="map_frame_id" default="map"/>
+  <arg name="map_size_x" default="40"/>
+  <arg name="map_size_y" default="20"/>
+  <arg name="map_size_z" default="3"/>
+
+  
+  <arg name="init_state_x" default="0.0"/>
+  <arg name="init_state_y" default="0.0"/>
+
+  <arg name="c_num" default="0.0"/>
+  <arg name="p_num" default="100.0"/>
+  <arg name="b_num" default="10.0"/>
+
+  <arg name="enable_multi" default="true"/>
+
+
+  <arg name="location_path" />
+
+
+  <node pkg ="map_generator" name ="random_forest" type ="random_forest" output = "screen">    
+    <!-- this is the map init position, not the odom-->
+    <param name="init_state_x"   value="$(arg init_state_x)"/>
+    <param name="init_state_y"   value="$(arg init_state_y)"/>
+    <param name="map/x_size"     value="$(arg map_size_x)" />
+    <param name="map/y_size"     value="$(arg map_size_y)" />
+    <param name="map/z_size"     value="$(arg map_size_z)" />
+    <param name="map/resolution" value="0.1"/>        
+    <param name="map/frame_id"     value="$(arg map_frame_id)" />
+
+    <param name="location_path" value="$(arg location_path)"  />
+    <param name="enable_multi" value="$(arg enable_multi)"  />
+
+
+    <param name="ObstacleShape/seed" value="-1"/>
+    <param name="map/obs_num"    value="$(arg p_num)"/>
+    <param name="ObstacleShape/lower_rad" value="0.4"/>
+    <param name="ObstacleShape/upper_rad" value="0.8"/>
+    <param name="ObstacleShape/lower_hei" value="2.8"/>
+    <param name="ObstacleShape/upper_hei" value="3.5"/>        
+    <param name="ObstacleShape/set_semantics" value="true"/>     
+
+    <param name="map/box_num"    value="$(arg b_num)"/>
+    <param name="ObstacleShape/lower_b_len" value="0.5"/>
+    <param name="ObstacleShape/upper_b_len" value="2.0"/>
+    <param name="ObstacleShape/lower_b_hei" value="0.5"/>
+    <param name="ObstacleShape/upper_b_hei" value="3.0"/> 
+
+    <param name="map/circle_num" value="$(arg c_num)"/>        
+    <param name="ObstacleShape/radius_l" value="0.4"/>        
+    <param name="ObstacleShape/radius_h" value="0.2"/>        
+    <param name="ObstacleShape/z_l" value="0.5"/>        
+    <param name="ObstacleShape/z_h" value="0.6"/>        
+    <param name="ObstacleShape/theta" value="1.57"/>        
+
+    <param name="sensing/radius" value="5.0"/>        
+    <param name="sensing/rate"   value="10.0"/>        
+  </node>
+
+</launch>

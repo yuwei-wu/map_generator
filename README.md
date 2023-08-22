@@ -1,30 +1,18 @@
-# Parameterized Map
+# Vicon Map
 
-This repo is under construction. For mini-project users, you can directly use it.
-
-### usage 1: structured map generation
+These scenarios are used for vicon experiments with some prior information about the semantics
 
 
-```
-roslaunch param_env structure_map.launch
-```
+### usage 
 
-You can adjust the apprximate ratio of each element (overlapping is also counting now) in the launch file 
-
-```
-<param name="map/cylinder_ratio" value="0.10" type="double"/>
-<param name="map/circle_ratio"   value="0.02" type="double"/>
-<param name="map/gate_ratio"     value="0.02" type="double"/>
-<param name="map/ellip_ratio"    value="0.02" type="double"/>
-<param name="map/poly_ratio"     value="0.01" type="double"/>
-```
+1. In map_generator/semantics, to fill:
 
 
-Examples:
+The naming type is like:
 
-<p align="center">
-  <img src="docs/exp_gate2.png" width = "390" height = "390"/>
-  <img src="docs/exp_cy2.png" width = "390" height = "390"/>
-  <img src="docs/exp_all2.png" width = "390" height = "390"/>
-  <img src="docs/cluttered.png" width = "390" height = "390"/>
-</p>
+(1) cylinders: name, radiux, height
+
+(2) boxes: name, wdie1(half size), wide2, theta(deg), height
+
+
+2. in vicon_map.launch, use the semantic path
