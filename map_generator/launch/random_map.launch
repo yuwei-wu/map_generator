@@ -13,11 +13,6 @@
   <arg name="p_num" default="100.0"/>
   <arg name="b_num" default="10.0"/>
 
-  <arg name="enable_multi" default="true"/>
-
-
-  <arg name="location_path" />
-
 
   <node pkg ="map_generator" name ="random_forest" type ="random_forest" output = "screen">    
     <!-- this is the map init position, not the odom-->
@@ -28,9 +23,6 @@
     <param name="map/z_size"     value="$(arg map_size_z)" />
     <param name="map/resolution" value="0.1"/>        
     <param name="map/frame_id"     value="$(arg map_frame_id)" />
-
-    <param name="location_path" value="$(arg location_path)"  />
-    <param name="enable_multi" value="$(arg enable_multi)"  />
 
 
     <param name="ObstacleShape/seed" value="-1"/>
@@ -53,9 +45,8 @@
     <param name="ObstacleShape/z_l" value="0.5"/>        
     <param name="ObstacleShape/z_h" value="0.6"/>        
     <param name="ObstacleShape/theta" value="1.57"/>        
-
-    <param name="sensing/radius" value="5.0"/>        
-    <param name="sensing/rate"   value="10.0"/>        
+   
+    <param name="sensing/rate"   value="1.0"/>        
   </node>
 
 </launch>

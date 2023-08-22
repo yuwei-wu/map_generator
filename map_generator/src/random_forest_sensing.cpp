@@ -48,7 +48,7 @@ vector<double> _state;
 int _obs_num, _box_num;
 double _x_size, _y_size, _z_size;
 double _x_l, _x_h, _y_l, _y_h, _w_l, _w_h, _h_l, _h_h, _b_l_l, _b_l_h, _b_h_l, _b_h_h;
-double _z_limit, _sensing_range, _resolution, _sense_rate, _init_x, _init_y;
+double _z_limit, _resolution, _sense_rate, _init_x, _init_y;
 std::string _frame_id;
 
 bool _map_ok = false;
@@ -67,48 +67,6 @@ sensor_msgs::PointCloud2 globalMap_pcd;
 
 pcl::PointCloud<pcl::PointXYZ> cloudMap;
 semantic_msgs::SemanticArray global_semantics_msg;
-
-// visualization_msgs::MarkerArray //;
-// visualization_msgs::Marker semantics_mk;
-
-std::string _location_path;
-bool _enable_multi;
-
-
-std::vector<Eigen::Vector2d> initial_pos_swarm;
-
-
-void ReadSwarmOdom(){
-  if (!_enable_multi){return;}
-  std::ifstream fp(_location_path);
-  std::string line;
-  while (getline(fp,line)){ 
-      Eigen::Vector2d data_line;
-      std::string number;
-      std::istringstream readstr(line);
-      for(unsigned int j = 0;j < 2;j++){
-          getline(readstr,number,',');
-          std::cout << "number " << number <<std::endl;
-          data_line(j) = atol(number.c_str());
-      }
-      initial_pos_swarm.push_back(data_line);
-  }
-}
-
-
-// if collide, return true
-bool CollideWithSwarm(double x, double y){
-
-
-  for(auto &pos :  initial_pos_swarm){
-    
-    if (sqrt(pow(x - pos(0), 2) + pow(y - pos(1), 2)) < 2.0){
-      return true;
-    }
-  }
-
-  return false;
-}
 
 
 void RandomMapGenerate() {
@@ -144,11 +102,6 @@ void RandomMapGenerate() {
     int heiNum = ceil(h / _resolution);
 
     if (sqrt(pow(x - _init_x, 2) + pow(y - _init_y, 2)) < 1.5) {
-      i--;
-      continue;
-    }
-
-    if(CollideWithSwarm(x, y)){
       i--;
       continue;
     }
@@ -221,10 +174,6 @@ void RandomMapGenerate() {
       continue;
     }
 
-    if(CollideWithSwarm(x, y)){
-      i--;
-      continue;
-    }
 
     x = floor(x / _resolution) * _resolution + _resolution / 2.0;
     y = floor(y / _resolution) * _resolution + _resolution / 2.0;
@@ -273,20 +222,6 @@ void RandomMapGenerate() {
       idx += 1;
     }
 
-    bool is_valid = true;
-    for (auto rp: box_model.rps){
-
-      if(CollideWithSwarm(rp.x, rp.y)){
-        is_valid = false;
-        break;
-      }
-
-    }
-
-    if(!is_valid){
-      continue;
-    }
-
 
     global_semantics_msg.polyhedrons.push_back(box_model);
     
@@ -323,12 +258,6 @@ void RandomMapGenerate() {
     z = rand_z_(eng);
 
     if (sqrt(pow(x - _init_x, 2) + pow(y - _init_y, 2)) < 1.5) {
-      i--;
-      continue;
-    }
-
-
-    if(CollideWithSwarm(x, y)){
       i--;
       continue;
     }
@@ -392,7 +321,6 @@ void pubSensedPoints() {
   _all_map_semantics_pub.publish(global_semantics_msg);
 
 
-  //_all_map_semantics_pub_vis.publish(//);
 
   return;
 }
@@ -402,11 +330,9 @@ int main(int argc, char** argv) {
   ros::NodeHandle n("~");
 
   _all_map_cloud_pub = n.advertise<sensor_msgs::PointCloud2>("/global_cloud", 1);
-
   // semantics publishers
   _all_map_semantics_pub = n.advertise<semantic_msgs::SemanticArray>("/global_semantics", 1);
   //_all_map_semantics_pub_vis = n.advertise<visualization_msgs::MarkerArray>("global_semantics_vis", 1);
-
 
   n.param("init_state_x", _init_x, 0.0);
   n.param("init_state_y", _init_y, 0.0);
@@ -414,7 +340,6 @@ int main(int argc, char** argv) {
   n.param("map/x_size", _x_size, 50.0);
   n.param("map/y_size", _y_size, 50.0);
   n.param("map/z_size", _z_size, 5.0);
-
 
   n.param("map/obs_num", _obs_num, 30);
   n.param("map/resolution", _resolution, 0.1);
@@ -427,9 +352,7 @@ int main(int argc, char** argv) {
   n.param("ObstacleShape/lower_b_hei", _b_h_l, 0.1);
   n.param("ObstacleShape/upper_b_hei", _b_h_h, 4.0);
 
-
   n.param("map/frame_id", _frame_id, string("map"));
-
 
   n.param("ObstacleShape/lower_rad", _w_l, 0.3);
   n.param("ObstacleShape/upper_rad", _w_h, 0.8);
@@ -437,20 +360,13 @@ int main(int argc, char** argv) {
   n.param("ObstacleShape/upper_hei", _h_h, 7.0);
   n.param("ObstacleShape/set_semantics", _set_semantics, false);
 
-
   n.param("ObstacleShape/radius_l", radius_l_, 7.0);
   n.param("ObstacleShape/radius_h", radius_h_, 7.0);
   n.param("ObstacleShape/z_l", z_l_, 7.0);
   n.param("ObstacleShape/z_h", z_h_, 7.0);
   n.param("ObstacleShape/theta", theta_, 7.0);
 
-  n.param("sensing/radius", _sensing_range, 5.0);
   n.param("sensing/rate", _sense_rate, 10.0);
-
-  n.param("location_path", _location_path, string("location.csv"));
-
-  n.param("enable_multi", _enable_multi, true);
-
 
   _x_l = -_x_size / 2.0;
   _x_h = +_x_size / 2.0;
@@ -461,19 +377,7 @@ int main(int argc, char** argv) {
   _obs_num = min(_obs_num, (int)_x_size * 10);
   _z_limit = _z_size;
 
-  // semantics_mk.header.frame_id = _frame_id;
-  // semantics_mk.header.stamp = ros::Time::now();
-  // semantics_mk.type = visualization_msgs::Marker::CYLINDER;
-  // semantics_mk.action  = visualization_msgs::Marker::ADD;
-  // semantics_mk.id = 0;
-  // semantics_mk.color.r = 0.5;
-  // semantics_mk.color.g = 0.5;
-  // semantics_mk.color.b = 0.5;
-  // semantics_mk.color.a = 0.6;
-
   ros::Duration(0.5).sleep();
-
-  ReadSwarmOdom();
 
   RandomMapGenerate();
 
