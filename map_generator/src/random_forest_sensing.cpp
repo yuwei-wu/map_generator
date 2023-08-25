@@ -32,7 +32,8 @@ vector<int> pointIdxRadiusSearch;
 vector<float> pointRadiusSquaredDistance;
 
 random_device rd;
-default_random_engine eng(rd());
+default_random_engine eng(1.0);
+double seed_;
 uniform_real_distribution<double> rand_x;
 uniform_real_distribution<double> rand_y;
 uniform_real_distribution<double> rand_w;
@@ -299,6 +300,24 @@ void RandomMapGenerate() {
     }
   }
 
+  //generate ground
+  for (double r = _x_l; r < _x_h ; r += _resolution ){
+    for (double s = _y_l; s < _y_h; s += _resolution){
+      for (double t = 0.0; t < 0.2; t += 0.1) {
+
+        pt_random.x = r + 1e-2;
+        pt_random.y = s + 1e-2;
+        pt_random.z = t + 1e-2;
+
+        cloudMap.points.push_back(pt_random);
+      }
+    }
+  }
+
+
+
+
+
   cloudMap.width = cloudMap.points.size();
   cloudMap.height = 1;
   cloudMap.is_dense = true;
@@ -351,6 +370,12 @@ int main(int argc, char** argv) {
   n.param("ObstacleShape/upper_b_len", _b_l_h, 7.0);
   n.param("ObstacleShape/lower_b_hei", _b_h_l, 0.1);
   n.param("ObstacleShape/upper_b_hei", _b_h_h, 4.0);
+  n.param("ObstacleShape/seed", seed_, 1.0);
+
+  eng.seed(seed_);
+
+  
+
 
   n.param("map/frame_id", _frame_id, string("map"));
 

@@ -1,7 +1,7 @@
 <launch>
 
   <arg name="map_frame_id" default="map"/>
-  <arg name="map_size_x" default="40"/>
+  <arg name="map_size_x" default="20"/>
   <arg name="map_size_y" default="20"/>
   <arg name="map_size_z" default="3"/>
 
