@@ -1,30 +1,27 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 // #include <pcl/search/kdtree.h>
-#include <pcl/kdtree/kdtree_flann.h>
-#include <pcl_conversions/pcl_conversions.h>
-#include <iostream>
-
-#include <fstream>
-#include <string>
-#include <sstream>
-
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/Vector3.h>
 #include <math.h>
 #include <nav_msgs/Odometry.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl_conversions/pcl_conversions.h>
 #include <ros/console.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <std_srvs/Empty.h>
 
 #include <Eigen/Eigen>
+#include <fstream>
+#include <iostream>
 #include <random>
+#include <sstream>
+#include <string>
 
 // for semantic map visualization
 #include <semantic_msgs/SemanticArray.h>
-
 #include <visualization_msgs/MarkerArray.h>
-
 
 using namespace std;
 
@@ -41,14 +38,16 @@ uniform_real_distribution<double> rand_h;
 uniform_real_distribution<double> rand_b_l;
 uniform_real_distribution<double> rand_b_h;
 
-
-ros::Publisher _all_map_cloud_pub, _all_map_semantics_pub, _all_map_semantics_pub_vis;
+ros::Publisher _all_map_cloud_pub, _all_map_semantics_pub,
+    _all_map_semantics_pub_vis;
 
 vector<double> _state;
 
+uint map_number = 1;
 int _obs_num, _box_num;
 double _x_size, _y_size, _z_size;
-double _x_l, _x_h, _y_l, _y_h, _w_l, _w_h, _h_l, _h_h, _b_l_l, _b_l_h, _b_h_l, _b_h_h;
+double _x_l, _x_h, _y_l, _y_h, _w_l, _w_h, _h_l, _h_h, _b_l_l, _b_l_h, _b_h_l,
+    _b_h_h;
 double _z_limit, _resolution, _sense_rate, _init_x, _init_y;
 std::string _frame_id;
 
@@ -69,12 +68,14 @@ sensor_msgs::PointCloud2 globalMap_pcd;
 pcl::PointCloud<pcl::PointXYZ> cloudMap;
 semantic_msgs::SemanticArray global_semantics_msg;
 
-
 void RandomMapGenerate() {
+  global_semantics_msg.polyhedrons.clear();
+  global_semantics_msg.cylinders.clear();
+  cloudMap.clear();
+
   pcl::PointXYZ pt_random;
   geometry_msgs::Pose pt;
   pt.orientation.w = 1.0;
-
 
   rand_x = uniform_real_distribution<double>(_x_l, _x_h);
   rand_y = uniform_real_distribution<double>(_y_l, _y_h);
@@ -84,13 +85,10 @@ void RandomMapGenerate() {
   rand_b_l = uniform_real_distribution<double>(_b_l_l, _b_l_h);
   rand_b_h = uniform_real_distribution<double>(_b_h_l, _b_h_h);
 
-
-
   rand_radius_ = uniform_real_distribution<double>(radius_l_, radius_h_);
   rand_radius2_ = uniform_real_distribution<double>(radius_l_, 1.2);
   rand_theta_ = uniform_real_distribution<double>(-theta_, theta_);
   rand_z_ = uniform_real_distribution<double>(z_l_, z_h_);
-
 
   // only enable the clyinders in the forest case
   // generate polar obs
@@ -110,15 +108,14 @@ void RandomMapGenerate() {
     x = floor(x / _resolution) * _resolution + _resolution / 2.0;
     y = floor(y / _resolution) * _resolution + _resolution / 2.0;
 
-    pt.position.x= x;
+    pt.position.x = x;
     pt.position.y = y;
-    pt.position.z = 0.5*h;
+    pt.position.z = 0.5 * h;
     // semantics_mk.pose = pt;
     // semantics_mk.scale.x = semantics_mk.scale.y = w; // less then 1
     // semantics_mk.scale.z = h;
     // //semantics_vis.markers.push_back(semantics_mk);
     // semantics_mk.id += 1;
-
 
     semantic_msgs::Cylinder tree_model;
 
@@ -127,30 +124,28 @@ void RandomMapGenerate() {
     tree_model.pos.y = y;
     tree_model.r = 0.5 * w;
     tree_model.h = h;
-    
+
     global_semantics_msg.cylinders.push_back(tree_model);
 
-    int widNum = ceil( w / _resolution) +1;
-    
+    int widNum = ceil(w / _resolution) + 1;
+
     for (int r = -widNum / 2.0; r < widNum / 2.0; r++)
       for (int s = -widNum / 2.0; s < widNum / 2.0; s++) {
-
         for (int t = -2.0; t < heiNum; t++) {
           pt_random.x = x + (r + 0.5) * _resolution + 1e-2;
           pt_random.y = y + (s + 0.5) * _resolution + 1e-2;
           pt_random.z = (t + 0.5) * _resolution + 1e-2;
 
           //@yuwei: to make it as semantics
-          if (  (pt_random.x - x)*(pt_random.x - x) + (pt_random.y - y)*(pt_random.y - y)   >  w*w/ 4.0  ){
+          if ((pt_random.x - x) * (pt_random.x - x) +
+                  (pt_random.y - y) * (pt_random.y - y) >
+              w * w / 4.0) {
             continue;
           }
           cloudMap.points.push_back(pt_random);
         }
       }
-    
-
   }
-
 
   // generate box
   for (int i = 0; i < _box_num; i++) {
@@ -158,23 +153,19 @@ void RandomMapGenerate() {
     x = rand_x(eng);
     y = rand_y(eng);
 
-    w1 = rand_b_l(eng);  // width in x  // should be total width
+    w1 = rand_b_l(eng);      // width in x  // should be total width
     w2 = 0.3 * rand_w(eng);  // width in y
     h = rand_b_h(eng);
     theta = rand_theta_(eng);
 
-
     Eigen::Matrix3d rotate;
-    rotate << cos(theta), -sin(theta), 0.0, 
-              sin(theta),  cos(theta), 0.0, 
-              0,            0,           1;
-
+    rotate << cos(theta), -sin(theta), 0.0, sin(theta), cos(theta), 0.0, 0, 0,
+        1;
 
     if (sqrt(pow(x - _init_x, 2) + pow(y - _init_y, 2)) < 2.0) {
       i--;
       continue;
     }
-
 
     x = floor(x / _resolution) * _resolution + _resolution / 2.0;
     y = floor(y / _resolution) * _resolution + _resolution / 2.0;
@@ -190,12 +181,11 @@ void RandomMapGenerate() {
     box_model.normals.resize(6);
 
     Eigen::MatrixXd b_points(3, 6);
-    b_points << -0.5 * w1, 0.5 * w1, 0.0, 0.0, 0.0, 0.0,
-                0.0, 0.0, -0.5 * w2, 0.5 *  w2, 0.0, 0.0,
-                0.0, 0.0, 0.0, 0.0, -0.5 * h ,  0.5 *  h ;
+    b_points << -0.5 * w1, 0.5 * w1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5 * w2,
+        0.5 * w2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5 * h, 0.5 * h;
     Eigen::Vector3d pos;
 
-    for (int i = 0; i < 6; i++){
+    for (int i = 0; i < 6; i++) {
       pos = rotate * b_points.col(i);
       box_model.points[i].x = x + pos(0);
       box_model.points[i].y = y + pos(1);
@@ -205,44 +195,43 @@ void RandomMapGenerate() {
       box_model.normals[i].x = pos(0);
       box_model.normals[i].y = pos(1);
       box_model.normals[i].z = pos(2);
-
     }
 
     int size = ceil(w1 / w2);
     box_model.rps.resize(size);
-    //std::cout << "w2 is " << w2 <<  "w1 is " << w1 <<  std::endl;
-    //std::cout << "x is " << x <<  "y is " << y <<  "theta is " << theta << std::endl;
-    //std::cout << "the size is " << size << std::endl;
+    // std::cout << "w2 is " << w2 <<  "w1 is " << w1 <<  std::endl;
+    // std::cout << "x is " << x <<  "y is " << y <<  "theta is " << theta <<
+    // std::endl; std::cout << "the size is " << size << std::endl;
     int idx = 0;
-    for (double r = -w1 + w2; r < w1 + w2; r += 2.0 * w2){
-
-      box_model.rps[idx].x = x + cos(theta)*r; 
-      box_model.rps[idx].y = y + sin(theta)*r;
-      //std::cout << " idx is " << idx << std::endl;
-      //std::cout << " box_model.rps[idx] is " << box_model.rps[idx].x << box_model.rps[idx].y << std::endl;
+    for (double r = -w1 + w2; r < w1 + w2; r += 2.0 * w2) {
+      box_model.rps[idx].x = x + cos(theta) * r;
+      box_model.rps[idx].y = y + sin(theta) * r;
+      // std::cout << " idx is " << idx << std::endl;
+      // std::cout << " box_model.rps[idx] is " << box_model.rps[idx].x <<
+      // box_model.rps[idx].y << std::endl;
       idx += 1;
     }
 
-
     global_semantics_msg.polyhedrons.push_back(box_model);
-    
+
     int heiNum = ceil(h / _resolution);
 
-    for (int r = -widNum1; r <  widNum1; r++){
-      for (int s = -widNum2; s < widNum2; s++){
+    for (int r = -widNum1; r < widNum1; r++) {
+      for (int s = -widNum2; s < widNum2; s++) {
         for (int t = -2.0; t < heiNum; t++) {
-
-          Eigen::Vector3d box_scale = rotate * Eigen::Vector3d((r + 0.5) * _resolution, (s + 0.5) * _resolution,
-                                   (t + 0.5)* _resolution);
+          Eigen::Vector3d box_scale =
+              rotate * Eigen::Vector3d((r + 0.5) * _resolution,
+                                       (s + 0.5) * _resolution,
+                                       (t + 0.5) * _resolution);
 
           pt_random.x = x + box_scale(0) + 1e-2;
           pt_random.y = y + box_scale(1) + 1e-2;
           pt_random.z = box_scale(2) + 1e-2;
-          if ( abs(pt_random.x) >=  0.5 * _x_size  ||
-               abs(pt_random.y) >=  0.5 * _y_size  ||
-               abs(pt_random.z) >=        _z_size   ){
-                 continue;
-               }
+          if (abs(pt_random.x) >= 0.5 * _x_size ||
+              abs(pt_random.y) >= 0.5 * _y_size ||
+              abs(pt_random.z) >= _z_size) {
+            continue;
+          }
 
           cloudMap.points.push_back(pt_random);
         }
@@ -250,8 +239,8 @@ void RandomMapGenerate() {
     }
   }
 
-
-  // generate circle obs // even if we generate, we will not include them into our shared information
+  // generate circle obs // even if we generate, we will not include them into
+  // our shared information
   for (int i = 0; i < circle_num_; ++i) {
     double x, y, z;
     x = rand_x(eng);
@@ -263,7 +252,6 @@ void RandomMapGenerate() {
       continue;
     }
 
-
     x = floor(x / _resolution) * _resolution + _resolution / 2.0;
     y = floor(y / _resolution) * _resolution + _resolution / 2.0;
     z = floor(z / _resolution) * _resolution + _resolution / 2.0;
@@ -272,7 +260,8 @@ void RandomMapGenerate() {
 
     double theta = rand_theta_(eng);
     Eigen::Matrix3d rotate;
-    rotate << cos(theta), -sin(theta), 0.0, sin(theta), cos(theta), 0.0, 0, 0, 1;
+    rotate << cos(theta), -sin(theta), 0.0, sin(theta), cos(theta), 0.0, 0, 0,
+        1;
 
     double radius1 = rand_radius_(eng);
     double radius2 = rand_radius2_(eng);
@@ -289,7 +278,8 @@ void RandomMapGenerate() {
       for (int ifx = -0; ifx <= 0; ++ifx)
         for (int ify = -0; ify <= 0; ++ify)
           for (int ifz = -0; ifz <= 0; ++ifz) {
-            cpt_if = cpt + Eigen::Vector3d(ifx * _resolution, ify * _resolution,
+            cpt_if = cpt + Eigen::Vector3d(ifx * _resolution,
+                                           ify * _resolution,
                                            ifz * _resolution);
             cpt_if = rotate * cpt_if + Eigen::Vector3d(x, y, z);
             pt_random.x = cpt_if(0);
@@ -300,11 +290,10 @@ void RandomMapGenerate() {
     }
   }
 
-  //generate ground
-  for (double r = _x_l; r < _x_h ; r += _resolution ){
-    for (double s = _y_l; s < _y_h; s += _resolution){
+  // generate ground
+  for (double r = _x_l; r < _x_h; r += _resolution) {
+    for (double s = _y_l; s < _y_h; s += _resolution) {
       for (double t = 0.0; t < 0.2; t += 0.1) {
-
         pt_random.x = r + 1e-2;
         pt_random.y = s + 1e-2;
         pt_random.z = t + 1e-2;
@@ -314,10 +303,6 @@ void RandomMapGenerate() {
     }
   }
 
-
-
-
-
   cloudMap.width = cloudMap.points.size();
   cloudMap.height = 1;
   cloudMap.is_dense = true;
@@ -326,20 +311,26 @@ void RandomMapGenerate() {
 
   _map_ok = true;
 }
-
-int i = 0;
+bool changeMapCallback(std_srvs::Empty::Request& req,
+                       std_srvs::Empty::Response& res) {
+  eng.seed(++seed_);
+  _map_ok = false;
+  RandomMapGenerate();  // auto set map ok
+  return true;
+}
 void pubSensedPoints() {
   // if (i < 10) {
+  if (!_map_ok) {
+    ROS_WARN("Map not ready yet");
+    return;
+  }
   pcl::toROSMsg(cloudMap, globalMap_pcd);
   globalMap_pcd.header.frame_id = _frame_id;
   _all_map_cloud_pub.publish(globalMap_pcd);
-  // }
 
-  global_semantics_msg.mav_id = -1; // -1 for global, 0 + for the mav_id
+  global_semantics_msg.mav_id = -1;  // -1 for global, 0 + for the mav_id
   global_semantics_msg.header.frame_id = _frame_id;
   _all_map_semantics_pub.publish(global_semantics_msg);
-
-
 
   return;
 }
@@ -348,10 +339,18 @@ int main(int argc, char** argv) {
   ros::init(argc, argv, "random_map_sensing");
   ros::NodeHandle n("~");
 
-  _all_map_cloud_pub = n.advertise<sensor_msgs::PointCloud2>("/global_cloud", 1);
+  _all_map_cloud_pub =
+      n.advertise<sensor_msgs::PointCloud2>("/global_cloud", 1);
   // semantics publishers
-  _all_map_semantics_pub = n.advertise<semantic_msgs::SemanticArray>("/global_semantics", 1);
-  //_all_map_semantics_pub_vis = n.advertise<visualization_msgs::MarkerArray>("global_semantics_vis", 1);
+  _all_map_semantics_pub =
+      n.advertise<semantic_msgs::SemanticArray>("/global_semantics", 1);
+
+  // define service that can change map
+  ros::ServiceServer change_map_service =
+      n.advertiseService("/gen_new_map", changeMapCallback);
+
+  //_all_map_semantics_pub_vis =
+  // n.advertise<visualization_msgs::MarkerArray>("global_semantics_vis", 1);
 
   n.param("init_state_x", _init_x, 0.0);
   n.param("init_state_y", _init_y, 0.0);
@@ -373,9 +372,6 @@ int main(int argc, char** argv) {
   n.param("ObstacleShape/seed", seed_, 1.0);
 
   eng.seed(seed_);
-
-  
-
 
   n.param("map/frame_id", _frame_id, string("map"));
 
