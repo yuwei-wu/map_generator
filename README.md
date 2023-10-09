@@ -1,3 +1,7 @@
+
+The newer version is available here: https://github.com/KumarRobotics/kr_param_map
+
+
 # Parameterized Map
 
 This repo is under construction. For mini-project users, you can directly use it.
@@ -9,7 +13,7 @@ This repo is under construction. For mini-project users, you can directly use it
 roslaunch param_env structure_map.launch
 ```
 
-You can adjust the apprximate ratio of each element (overlapping is also counting now) in the launch file 
+You can adjust the approximate ratio of each element (overlapping is also counting now) in the launch file 
 
 ```
 <param name="map/cylinder_ratio" value="0.10" type="double"/>
